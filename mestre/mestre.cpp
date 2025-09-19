@@ -1,87 +1,114 @@
-// mestre/mestre.cpp
 #include "lib/httplib.h"
 #include "lib/json.hpp"
 #include <iostream>
 #include <string>
+#include <thread>
+#include <vector>
+#include <future>
 
 using json = nlohmann::json;
 
 // Função para a thread que se comunica com o Escravo 1 (Letras)
-void contarLetras(const std::string &texto, int &resultado)
+// Usando std::promise para retornar o valor ou uma exceção.
+void contarLetras(const std::string &texto, std::promise<int> promise)
 {
-  httplib::Client cli("http://escravo1-letras:8081");
-  cli.set_connection_timeout(5, 0); // 5 segundos de timeout
-
-  if (auto res_health = cli.Get("/health"))
-  {
-    if (res_health->status == 200)
+    try
     {
-      if (auto res = cli.Post("/letras", texto, "text/plain"))
-      {
-        if (res->status == 200)
+        httplib::Client cli("escravo1-letras", 8081);
+        cli.set_connection_timeout(5, 0); // 5 segundos de timeout
+
+        if (auto res_health = cli.Get("/health"))
         {
-          resultado = std::stoi(res->body);
-          return;
+            if (res_health->status == 200)
+            {
+                if (auto res = cli.Post("/letras", texto, "text/plain"))
+                {
+                    if (res->status == 200)
+                    {
+                        promise.set_value(std::stoi(res->body));
+                        return;
+                    }
+                }
+            }
         }
-      }
+        // Se qualquer verificação falhar, lança uma exceção
+        throw std::runtime_error("Falha ao comunicar com escravo de letras.");
     }
-  }
-  resultado = -1; // Indica erro
+    catch (...)
+    {
+        // Captura qualquer exceção e a coloca na promise
+        promise.set_exception(std::current_exception());
+    }
 }
 
 // Função para a thread que se comunica com o Escravo 2 (Números)
-void contarNumeros(const std::string &texto, int &resultado)
+void contarNumeros(const std::string &texto, std::promise<int> promise)
 {
-  httplib::Client cli("http://escravo2-numeros:8082");
-  cli.set_connection_timeout(5, 0);
-
-  if (auto res_health = cli.Get("/health"))
-  {
-    if (res_health->status == 200)
+    try
     {
-      if (auto res = cli.Post("/numeros", texto, "text/plain"))
-      {
-        if (res->status == 200)
+        httplib::Client cli("escravo2-numeros", 8082);
+        cli.set_connection_timeout(5, 0);
+
+        if (auto res_health = cli.Get("/health"))
         {
-          resultado = std::stoi(res->body);
-          return;
+            if (res_health->status == 200)
+            {
+                if (auto res = cli.Post("/numeros", texto, "text/plain"))
+                {
+                    if (res->status == 200)
+                    {
+                        promise.set_value(std::stoi(res->body));
+                        return;
+                    }
+                }
+            }
         }
-      }
+        throw std::runtime_error("Falha ao comunicar com escravo de numeros.");
     }
-  }
-  resultado = -1; // Indica erro
+    catch (...)
+    {
+        promise.set_exception(std::current_exception());
+    }
 }
 
 int main(void)
 {
-  httplib::Server svr;
+    httplib::Server svr;
 
-  svr.Post("/processar", [](const httplib::Request &req, httplib::Response &res)
-           {
+    svr.Post("/processar", [](const httplib::Request &req, httplib::Response &res)
+             {
         std::string texto = req.body;
-        int contagem_letras = 0;
-        int contagem_numeros = 0;
-
-        // Dispara as threads em paralelo
-        std::thread t1(contarLetras, std::cref(texto), std::ref(contagem_letras));
-        std::thread t2(contarNumeros, std::cref(texto), std::ref(contagem_numeros));
-
-        // Espera as threads finalizarem
-        t1.join();
-        t2.join();
         
-        if (contagem_letras == -1 || contagem_numeros == -1) {
-            res.status = 503; // Service Unavailable
-            res.set_content("Erro ao comunicar com um ou mais escravos.", "text/plain");
-        } else {
+        // Usando std::promise e std::future para um melhor gerenciamento de threads
+        std::promise<int> promise_letras;
+        std::future<int> future_letras = promise_letras.get_future();
+        std::thread t1(contarLetras, std::cref(texto), std::move(promise_letras));
+
+        std::promise<int> promise_numeros;
+        std::future<int> future_numeros = promise_numeros.get_future();
+        std::thread t2(contarNumeros, std::cref(texto), std::move(promise_numeros));
+        
+        // Desanexa as threads para que elas possam rodar de forma independente
+        t1.detach();
+        t2.detach();
+
+        try {
+            // Espera pelos resultados das futures
+            int contagem_letras = future_letras.get();
+            int contagem_numeros = future_numeros.get();
+
             // Monta a resposta JSON
             json json_response;
             json_response["letras"] = contagem_letras;
             json_response["numeros"] = contagem_numeros;
 
             res.set_content(json_response.dump(4), "application/json");
+        } catch (const std::exception& e) {
+            res.status = 503; // Service Unavailable
+            res.set_content(e.what(), "text/plain");
         } });
 
-  std::cout << "Servidor Mestre rodando em http://0.0.0.0:8080" << std::endl;
-  svr.listen("0.0.0.0", 8080);
+    std::cout << "Servidor Mestre rodando em http://0.0.0.0:8080" << std::endl;
+    svr.listen("0.0.0.0", 8080);
+    return 0;
 }
