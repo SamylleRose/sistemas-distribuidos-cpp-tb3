@@ -1,6 +1,7 @@
-Atividade 4 – THREADS, MIDDLEWARE, PARALELISMO, DOCKER (C++)
+# Atividade 4 – THREADS, MIDDLEWARE, PARALELISMO, DOCKER (C++)
 Este projeto implementa um sistema distribuído em C++ utilizando uma arquitetura Mestre-Escravo. A comunicação é feita via HTTP REST, e os servidores (Mestre e Escravos) são orquestrados com Docker e Docker Compose. O cliente é uma aplicação com interface gráfica feita em Qt 5.
 
+´´´
 Estrutura de Pastas
 /
 ├── cliente/
@@ -18,7 +19,7 @@ Estrutura de Pastas
 │   ├── httplib.h               # Biblioteca para requisições HTTP
 │   └── json.hpp                # Biblioteca para manipulação de JSON
 └── docker-compose.yml          # Arquivo para orquestrar os containers
-
+´´´
 Pré-requisitos
 Antes de começar, garanta que você tem os seguintes softwares instalados no seu ambiente Linux (ou WSL no Windows):
 
