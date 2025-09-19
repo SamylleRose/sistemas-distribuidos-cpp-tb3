@@ -1,19 +1,14 @@
-# Versão do docker-compose
+
 version: '3.8'
 
-# Definir os serviços (containers)
 services:
   mestre:
     build:
-      # Define o contexto de build como o diretório raiz (onde este arquivo está)
+      
       context: .
-      # Especifica o caminho para o Dockerfile do mestre
       dockerfile: mestre/Dockerfile
     ports:
-      # Expõe a porta 8080 do container na porta 8080 da sua máquina (host)
-      # Formato: "HOST:CONTAINER"
       - "8080:8080"
-    # O mestre depende dos escravos para funcionar corretamente
     depends_on:
       - escravo1-letras
       - escravo2-numeros
@@ -22,11 +17,9 @@ services:
     build:
       context: .
       dockerfile: escravo1-letras/Dockerfile
-    # A porta 8081 só precisa ser acessível pelos outros containers da rede Docker,
-    # não precisa ser exposta para a máquina host.
 
   escravo2-numeros:
     build:
       context: .
       dockerfile: escravo2-numeros/Dockerfile
-    # A porta 8082 também é apenas para comunicação interna na rede Docker.
+   

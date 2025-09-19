@@ -6,16 +6,15 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <future>
-#include <QTimer> // <<< CORREÇÃO: Adicionado o include que faltava
+#include <QTimer> 
 
-// Caminho corrigido para compilação local, voltando um diretório
 #include "../lib/httplib.h"
 #include "../lib/json.hpp"
 
-// Usar o nlohmann::json para facilitar o parsing do JSON
+
 using json = nlohmann::json;
 
-// Estrutura para conter o resultado da chamada de rede
+
 struct ProcessingResult {
     bool success;
     int letter_count;
@@ -23,10 +22,10 @@ struct ProcessingResult {
     std::string error_message;
 };
 
-// Função que executa a requisição HTTP numa thread separada
+
 ProcessingResult processText(const std::string& text_to_process) {
     httplib::Client cli("localhost", 8080);
-    cli.set_connection_timeout(10, 0); // Timeout de 10 segundos
+    cli.set_connection_timeout(10, 0); 
 
     auto res = cli.Post("/processar", text_to_process, "text/plain");
 
@@ -48,7 +47,6 @@ ProcessingResult processText(const std::string& text_to_process) {
 }
 
 
-// A classe da nossa janela principal
 class MainWindow : public QWidget {
 public:
     MainWindow(QWidget *parent = nullptr) : QWidget(parent) {
@@ -57,14 +55,14 @@ public:
 
 private:
     void setupUI() {
-        // Configurações da janela
+        
         setWindowTitle("Cliente - Análise de Texto");
         setMinimumSize(400, 300);
 
-        // Layout principal
+        
         QVBoxLayout *layout = new QVBoxLayout(this);
 
-        // Widgets da interface
+        
         infoLabel = new QLabel("Digite ou cole o texto a ser analisado abaixo:");
         textInput = new QTextEdit();
         processButton = new QPushButton("Processar Texto");
@@ -91,14 +89,14 @@ private:
             return;
         }
 
-        // Desabilita o botão e atualiza o status para evitar cliques duplos
+        
         processButton->setEnabled(false);
         statusLabel->setText("A processar...");
 
-        // Executa a tarefa de rede de forma assíncrona para não bloquear a GUI
+        
         processing_future = std::async(std::launch::async, processText, text);
         
-        // Usa um QTimer para verificar o resultado sem bloquear a thread principal
+       
         QTimer *timer = new QTimer(this);
         connect(timer, &QTimer::timeout, [this, timer]() {
             if (processing_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {

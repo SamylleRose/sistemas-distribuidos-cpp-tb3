@@ -1,16 +1,16 @@
 #include "lib/httplib.h"
-#include <cctype> // Para a função isdigit
+#include <cctype> 
 #include <iostream>
 
 int main(void)
 {
     httplib::Server svr;
 
-    // Endpoint para checagem de saúde
+    
     svr.Get("/health", [](const httplib::Request &, httplib::Response &res)
             { res.set_content("OK", "text/plain"); });
 
-    // Endpoint principal que conta os números
+    
     svr.Post("/numeros", [](const httplib::Request &req, httplib::Response &res)
              {
         std::string texto = req.body;
